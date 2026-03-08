@@ -1,120 +1,160 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head> 
+
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的个人导航</title>
     <style>
-        :root { 
+        :root {
             --bg-color: #f4f6f9;
             --card-bg: #ffffff;
             --text-main: #2c3e50;
             --text-sub: #7f8c8d;
             --accent: #3498db;
-            --hover-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            --hover-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
         }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            margin: 0; 
+            margin: 0;
             padding: 40px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-        } 
+        }
+
         .container {
             max-width: 1000px;
-            width: 100%; 
+            width: 100%;
         }
+
         header {
             text-align: center;
-            margin-bottom: 40px; 
+            margin-bottom: 40px;
         }
-        h1 { margin: 0; font-size: 2.5rem; color: var(--text-main); }
-        p.subtitle { color: var(--text-sub); margin-top: 10px; } 
-        
-        .group { 
+
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            color: var(--text-main);
+        }
+
+        p.subtitle {
+            color: var(--text-sub);
+            margin-top: 10px;
+        }
+
+        .group {
             background: var(--card-bg);
-            border-radius: 12px; 
+            border-radius: 12px;
             padding: 25px;
             margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             transition: transform 0.2s;
         }
-        .group:hover { transform: translateY(-2px); }
+
+        .group:hover {
+            transform: translateY(-2px);
+        }
+
         .group-title {
-            font-size: 1.2rem; 
+            font-size: 1.2rem;
             border-left: 4px solid var(--accent);
-            padding-left: 10px; 
+            padding-left: 10px;
             margin-bottom: 20px;
             color: var(--text-main);
-        } 
+        }
+
         .links {
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
         }
-        .link-item { 
-            text-decoration: none; 
+
+        .link-item {
+            text-decoration: none;
             color: var(--text-main);
             background: #f8f9fa;
             padding: 10px 20px;
-            border-radius: 8px; 
+            border-radius: 8px;
             font-size: 0.95rem;
             transition: all 0.2s;
             border: 1px solid #e9ecef;
-        } 
-        .link-item:hover { 
+        }
+
+        .link-item:hover {
             background: var(--accent);
-            color: white; 
+            color: white;
             box-shadow: var(--hover-shadow);
             border-color: var(--accent);
         }
+
         @media (max-width: 600px) {
-            .links { flex-direction: column; }
-            .link-item { width: 100%; box-sizing: border-box; }
+            .links {
+                flex-direction: column;
+            }
+
+            .link-item {
+                width: 100%;
+                box-sizing: border-box;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
-            <h1>🚀 个人工作区</h1> 
+            <h1>🚀 个人工作区</h1>
             <p class="subtitle">高效 · 简洁 · 专属导航</p>
-        </header> 
- 
+        </header>
+
+        <!-- 第零组：我的最近常用 -->
+        <div class="group">
+            <div class="group-title">🐢 最近常用</div>
+            <div class="links">
+                <a href="https://www.google.com" class="link-item" target="_blank">Google</a>
+                <a href="https://getemoji.com/" class="link-item" target="_blank">Emoji查询1</a>
+            </div>
+        </div>
+
         <!-- 第一组：常用搜索 -->
         <div class="group">
-            <div class="group-title">🔍 搜索与资讯</div> 
-            <div class="links"> 
-                <a href="https://www.google.com"  class="link-item" target="_blank">Google</a>
-                <a href="https://www.bing.com"  class="link-item" target="_blank">Bing</a>
-                <a href="https://www.zhihu.com"  class="link-item" target="_blank">知乎</a>
-                <a href="https://news.ycombinator.com"  class="link-item" target="_blank">Hacker News</a>
+            <div class="group-title">🔍 搜索与资讯</div>
+            <div class="links">
+                <a href="https://www.google.com" class="link-item" target="_blank">Google</a>
+                <a href="https://www.bing.com" class="link-item" target="_blank">Bing</a>
+                <a href="https://getemoji.com/" class="link-item" target="_blank">Emoji查询1</a>
+                <a href="https://emojipedia.org/" class="link-item" target="_blank">Emoji查询2</a>
+                <a href="https://www.zhihu.com" class="link-item" target="_blank">知乎</a>
+                <a href="https://news.ycombinator.com" class="link-item" target="_blank">Hacker News</a>
             </div>
-        </div> 
- 
+        </div>
+
         <!-- 第二组：开发工具 -->
         <div class="group">
             <div class="group-title">💻 开发与协作</div>
             <div class="links">
-                <a href="https://github.com"  class="link-item" target="_blank">GitHub</a>
-                <a href="https://stackoverflow.com"  class="link-item" target="_blank">Stack Overflow</a>
-                <a href="https://caniuse.com"  class="link-item" target="_blank">Can I Use</a>
-                <a href="https://jsonlint.com"  class="link-item" target="_blank">JSON Validator</a> 
-            </div> 
+                <a href="https://github.com" class="link-item" target="_blank">GitHub</a>
+                <a href="https://stackoverflow.com" class="link-item" target="_blank">Stack Overflow</a>
+                <a href="https://caniuse.com" class="link-item" target="_blank">Can I Use</a>
+                <a href="https://jsonlint.com" class="link-item" target="_blank">JSON Validator</a>
+            </div>
         </div>
- 
+
         <!-- 第三组：娱乐与生活 -->
         <div class="group">
-            <div class="group-title">☕ 生活与娱乐</div> 
-            <div class="links"> 
-                <a href="https://www.bilibili.com"  class="link-item" target="_blank">Bilibili</a>
-                <a href="https://music.163.com" class="link-item" target="_blank">网易云音乐</a> 
-                <a href="https://www.youtube.com"  class="link-item" target="_blank">YouTube</a>
-            </div> 
+            <div class="group-title">☕ 生活与娱乐</div>
+            <div class="links">
+                <a href="https://www.bilibili.com" class="link-item" target="_blank">Bilibili</a>
+                <a href="https://music.163.com" class="link-item" target="_blank">网易云音乐</a>
+                <a href="https://www.youtube.com" class="link-item" target="_blank">YouTube</a>
+            </div>
         </div>
     </div>
 </body>
+
 </html>
