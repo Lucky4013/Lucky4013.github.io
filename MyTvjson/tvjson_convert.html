@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多JSON文件解析与编辑器 - 增加筛选搜索功能 - 展开字段 - 优化srcFrom显示 - 导出时过滤空字段 - 删除列位置调整 - 默认值设置</title>
+    <title>多JSON文件解析与编辑器 - 增加列隐藏功能</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -205,6 +205,12 @@
         button:hover {
             background-color: #45a049;
         }
+        .hidden-column-btn {
+            background-color: #FF9800;
+        }
+        .hidden-column-btn:hover {
+            background-color: #F57C00;
+        }
         .error {
             color: red;
             text-align: center;
@@ -269,11 +275,20 @@
             text-align: center;
             font-weight: bold;
         }
+        .column-controls {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>多JSON文件解析与编辑器 - 增加筛选搜索功能 - 展开字段 - 优化srcFrom显示 - 导出时过滤空字段 - 删除列位置调整 - 默认值设置</h1>
+        <h1>多JSON文件解析与编辑器 - 增加列隐藏功能</h1>
         <div class="upload-section">
             <label for="jsonFiles">上传多个 JSON 文件:</label>
             <input type="file" id="jsonFiles" class="file-input" accept=".json" multiple>
@@ -318,6 +333,12 @@
             <tbody id="sites-body">
             </tbody>
         </table>
+        
+        <div id="column-controls" class="column-controls" style="display:none;">
+            <button id="show-all-columns-btn">显示所有列</button>
+            <button id="hide-all-columns-btn">隐藏所有列</button>
+        </div>
+        
         <div class="actions">
             <button id="save-btn" style="display:none;">保存修改</button>
             <button id="download-btn" style="display:none;">下载修改后数据</button>
@@ -340,11 +361,15 @@
             const saveBtn = document.getElementById('save-btn');
             const downloadBtn = document.getElementById('download-btn');
             const statsDiv = document.getElementById('stats');
+            const columnControls = document.getElementById('column-controls');
+            const showAllColumnsBtn = document.getElementById('show-all-columns-btn');
+            const hideAllColumnsBtn = document.getElementById('hide-all-columns-btn');
             
             let allSitesData = []; // 存储所有文件的数据
             let originalSitesData = []; // 存储原始数据（包含所有字段）
             let extraFieldNames = []; // 存储所有额外字段的名称
             let filteredSitesData = []; // 存储筛选后的数据
+            let hiddenColumns = new Set(); // 存储隐藏的列索引
             
             fileInput.addEventListener('change', function(event) {
                 const files = Array.from(event.target.files);
@@ -367,6 +392,9 @@
                 searchInput.value = '';
                 filterColumn.value = '';
                 statusFilter.value = '';
+                
+                // 重置隐藏列
+                hiddenColumns.clear();
                 
                 // 逐个处理文件
                 let processedCount = 0;
@@ -419,6 +447,7 @@
                                 applyFilters(); // 应用筛选
                                 renderTable();
                                 table.style.display = 'table';
+                                columnControls.style.display = 'flex';
                                 saveBtn.style.display = 'inline-block';
                                 downloadBtn.style.display = 'inline-block';
                                 successDiv.textContent = `成功加载 ${files.length} 个文件，共 ${allSitesData.length} 条记录！`;
@@ -433,6 +462,7 @@
                             
                             if (processedCount === files.length) {
                                 table.style.display = 'none';
+                                columnControls.style.display = 'none';
                                 saveBtn.style.display = 'none';
                                 downloadBtn.style.display = 'none';
                             }
@@ -444,6 +474,7 @@
                         
                         if (processedCount === files.length) {
                             table.style.display = 'none';
+                            columnControls.style.display = 'none';
                             saveBtn.style.display = 'none';
                             downloadBtn.style.display = 'none';
                         }
@@ -463,6 +494,29 @@
             searchInput.addEventListener('input', applyFilters);
             filterColumn.addEventListener('change', applyFilters);
             statusFilter.addEventListener('change', applyFilters);
+            
+            // 列控制按钮事件
+            showAllColumnsBtn.addEventListener('click', function() {
+                hiddenColumns.clear();
+                renderTable();
+                successDiv.textContent = '所有列已显示';
+                setTimeout(() => {
+                    successDiv.textContent = '';
+                }, 3000);
+            });
+            
+            hideAllColumnsBtn.addEventListener('click', function() {
+                // 隐藏所有列（除了拖拽手柄列）
+                const headerCells = headerRow.querySelectorAll('th');
+                for (let i = 1; i < headerCells.length; i++) { // 从1开始跳过拖拽手柄列
+                    hiddenColumns.add(i);
+                }
+                renderTable();
+                successDiv.textContent = '所有列已隐藏';
+                setTimeout(() => {
+                    successDiv.textContent = '';
+                }, 3000);
+            });
             
             function calculateExtraFields() {
                 // 定义基本字段（这些字段已经在主表中显示）
@@ -569,32 +623,60 @@
                 
                 // 添加固定字段列 - 按照新顺序排列
                 const fixedHeaders = [
-                    {name: 'Key', className: ''},
-                    {name: 'Name', className: ''},
-                    {name: '删除', className: 'delete-cell'},
-                    {name: 'Searchable', className: ''},
-                    {name: 'Quick Search', className: ''},
-                    {name: 'Changable', className: ''},
-                    {name: 'Hide', className: ''},
-                    {name: 'Src From', className: 'src-from-cell'},
-                    {name: '移动操作', className: ''}
+                    {name: 'Key', className: '', key: 'key'},
+                    {name: 'Name', className: '', key: 'name'},
+                    {name: '删除', className: 'delete-cell', key: 'delete'},
+                    {name: 'Searchable', className: '', key: 'searchable'},
+                    {name: 'Quick Search', className: '', key: 'quickSearch'},
+                    {name: 'Changable', className: '', key: 'changable'},
+                    {name: 'Hide', className: '', key: 'hide'},
+                    {name: 'Src From', className: 'src-from-cell', key: 'srcFrom'},
+                    {name: '移动操作', className: '', key: 'actions'}
                 ];
                 
-                fixedHeaders.forEach(headerInfo => {
+                fixedHeaders.forEach((headerInfo, index) => {
                     const th = document.createElement('th');
                     th.textContent = headerInfo.name;
                     if (headerInfo.className) {
                         th.className = headerInfo.className;
                     }
+                    
+                    // 创建隐藏开关
+                    const hideSwitch = document.createElement('span');
+                    hideSwitch.innerHTML = ' 🗙'; // 使用X符号表示隐藏
+                    hideSwitch.style.cursor = 'pointer';
+                    hideSwitch.style.color = 'white';
+                    hideSwitch.title = '点击隐藏此列';
+                    hideSwitch.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const colIndex = index + 2; // 加2是因为前面有拖拽手柄和索引列
+                        toggleColumn(colIndex);
+                    });
+                    
+                    th.appendChild(hideSwitch);
                     headerRow.appendChild(th);
                 });
                 
                 // 如果显示全部字段，则添加额外列
                 if (showAllFieldsToggle.checked) {
-                    extraFieldNames.forEach(fieldName => {
+                    extraFieldNames.forEach((fieldName, index) => {
                         const th = document.createElement('th');
                         th.textContent = fieldName;
                         th.style.minWidth = '120px';
+                        
+                        // 创建隐藏开关
+                        const hideSwitch = document.createElement('span');
+                        hideSwitch.innerHTML = ' 🗙'; // 使用X符号表示隐藏
+                        hideSwitch.style.cursor = 'pointer';
+                        hideSwitch.style.color = 'white';
+                        hideSwitch.title = '点击隐藏此列';
+                        hideSwitch.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const colIndex = fixedHeaders.length + index + 2; // 加2是因为前面有拖拽手柄和索引列
+                            toggleColumn(colIndex);
+                        });
+                        
+                        th.appendChild(hideSwitch);
                         headerRow.appendChild(th);
                     });
                 }
@@ -718,6 +800,49 @@
                     row.addEventListener('dragend', handleDragEnd);
                     
                     tbody.appendChild(row);
+                });
+                
+                // 应用隐藏列的状态
+                applyHiddenColumns();
+            }
+            
+            function toggleColumn(colIndex) {
+                if (hiddenColumns.has(colIndex)) {
+                    hiddenColumns.delete(colIndex);
+                    successDiv.textContent = `列已显示`;
+                } else {
+                    hiddenColumns.add(colIndex);
+                    successDiv.textContent = `列已隐藏`;
+                }
+                
+                setTimeout(() => {
+                    successDiv.textContent = '';
+                }, 2000);
+                
+                applyHiddenColumns();
+            }
+            
+            function applyHiddenColumns() {
+                const headerCells = headerRow.querySelectorAll('th');
+                const rows = tbody.querySelectorAll('tr');
+                
+                headerCells.forEach((cell, index) => {
+                    if (hiddenColumns.has(index)) {
+                        cell.style.display = 'none';
+                    } else {
+                        cell.style.display = '';
+                    }
+                });
+                
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    cells.forEach((cell, index) => {
+                        if (hiddenColumns.has(index)) {
+                            cell.style.display = 'none';
+                        } else {
+                            cell.style.display = '';
+                        }
+                    });
                 });
             }
             
