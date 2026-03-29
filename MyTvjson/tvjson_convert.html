@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多JSON文件解析与编辑器 - 增加筛选搜索功能 - 展开字段 - 优化srcFrom显示 - 导出时过滤空字段 - 删除列位置调整 - 默认值设置</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .upload-section {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .file-input {
+            margin-top: 10px;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .filter-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-box {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .toggle-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            overflow-x: auto;
+            display: block;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            min-width: 100px;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr.draggable-row {
+            cursor: move;
+            user-select: none;
+        }
+        tr.draggable-row:hover {
+            background-color: #e8f4fd;
+        }
+        .drag-handle {
+            cursor: move;
+            font-size: 18px;
+            color: #666;
+            padding: 5px;
+            margin: 0 2px;
+            border-radius: 4px;
+        }
+        .drag-handle:hover {
+            background-color: #e0e0e0;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .delete-switch input:checked + .slider {
+            background-color: #f44336;
+        }
+        .action-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+            margin: 0 2px;
+            border-radius: 4px;
+            position: relative;
+        }
+        .action-btn:hover {
+            background-color: #e0e0e0;
+        }
+        .tooltip {
+            visibility: hidden;
+            width: 120px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+        .action-btn:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .move-up { color: #2196F3; }
+        .move-down { color: #FF9800; }
+        .move-top { color: #4CAF50; }
+        .move-bottom { color: #F44336; }
+        .actions {
+            margin-top: 20px;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .index-cell {
+            width: 50px;
+        }
+        .src-from-cell {
+            width: 120px;
+            word-break: break-all;
+        }
+        .delete-cell {
+            width: 80px;
+        }
+        .drag-handle-cell {
+            width: 40px;
+            cursor: move;
+        }
+        .extra-field-cell {
+            text-align: left;
+            padding: 8px;
+            font-size: 12px;
+            max-width: 150px;
+            word-wrap: break-word;
+        }
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e8f5e8;
+            border-radius: 4px;
+            text-align: left;
+        }
+        .file-item {
+            margin: 5px 0;
+            padding: 5px;
+            background-color: #f0f0f0;
+            border-radius: 3px;
+        }
+        .deleted-row {
+            background-color: #ffcccc !important;
+            opacity: 0.6;
+        }
+        .drag-over {
+            background-color: #d4edda !important;
+            border: 2px dashed #28a745;
+        }
+        .dragging {
+            opacity: 0.5;
+            background-color: #b3d9ff;
+        }
+        .stats {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e7f3fe;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>多JSON文件解析与编辑器 - 增加筛选搜索功能 - 展开字段 - 优化srcFrom显示 - 导出时过滤空字段 - 删除列位置调整 - 默认值设置</h1>
+        <div class="upload-section">
+            <label for="jsonFiles">上传多个 JSON 文件:</label>
+            <input type="file" id="jsonFiles" class="file-input" accept=".json" multiple>
+        </div>
+        <div class="controls">
+            <div class="filter-section">
+                <input type="text" id="search-input" class="search-box" placeholder="全局搜索...">
+                <select id="filter-column">
+                    <option value="">所有列</option>
+                    <option value="key">Key</option>
+                    <option value="name">Name</option>
+                    <option value="searchable">Searchable</option>
+                    <option value="quickSearch">Quick Search</option>
+                    <option value="changable">Changable</option>
+                    <option value="hide">Hide</option>
+                    <option value="srcFrom">Src From</option>
+                </select>
+                <select id="status-filter">
+                    <option value="">所有状态</option>
+                    <option value="active">仅活动</option>
+                    <option value="deleted">仅删除</option>
+                </select>
+            </div>
+            <div class="toggle-section">
+                <label class="switch">
+                    <input type="checkbox" id="show-all-fields">
+                    <span class="slider"></span>
+                </label>
+                <label for="show-all-fields" style="margin-left: 10px;">显示全部字段（分列展示）</label>
+            </div>
+        </div>
+        <div id="stats" class="stats">显示 0 / 0 条记录</div>
+        <div id="file-info" class="file-info" style="display:none;"></div>
+        <div id="error-message" class="error"></div>
+        <div id="success-message" class="success"></div>
+        <table id="sites-table" style="display:none;">
+            <thead>
+                <tr id="table-header">
+                    <!-- 表头将通过JavaScript动态生成 -->
+                </tr>
+            </thead>
+            <tbody id="sites-body">
+            </tbody>
+        </table>
+        <div class="actions">
+            <button id="save-btn" style="display:none;">保存修改</button>
+            <button id="download-btn" style="display:none;">下载修改后数据</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('jsonFiles');
+            const showAllFieldsToggle = document.getElementById('show-all-fields');
+            const searchInput = document.getElementById('search-input');
+            const filterColumn = document.getElementById('filter-column');
+            const statusFilter = document.getElementById('status-filter');
+            const fileInfoDiv = document.getElementById('file-info');
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            const table = document.getElementById('sites-table');
+            const headerRow = document.getElementById('table-header');
+            const tbody = document.getElementById('sites-body');
+            const saveBtn = document.getElementById('save-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const statsDiv = document.getElementById('stats');
+            
+            let allSitesData = []; // 存储所有文件的数据
+            let originalSitesData = []; // 存储原始数据（包含所有字段）
+            let extraFieldNames = []; // 存储所有额外字段的名称
+            let filteredSitesData = []; // 存储筛选后的数据
+            
+            fileInput.addEventListener('change', function(event) {
+                const files = Array.from(event.target.files);
+                if (files.length === 0) return;
+                
+                // 显示上传的文件信息
+                fileInfoDiv.innerHTML = '<h3>已上传文件:</h3>';
+                files.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.textContent = file.name;
+                    fileInfoDiv.appendChild(fileItem);
+                });
+                fileInfoDiv.style.display = 'block';
+                
+                // 清空之前的错误信息
+                errorDiv.textContent = '';
+                
+                // 重置筛选条件
+                searchInput.value = '';
+                filterColumn.value = '';
+                statusFilter.value = '';
+                
+                // 逐个处理文件
+                let processedCount = 0;
+                allSitesData = []; // 清空之前的数据
+                originalSitesData = [];
+                
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const json = JSON.parse(e.target.result);
+                            
+                            // 尝试获取sites字段（小写）
+                            if (!json.sites || !Array.isArray(json.sites)) {
+                                throw new Error(`文件 ${file.name} 中未找到有效的sites数组字段`);
+                            }
+                            
+                            // 获取文件名（不包含扩展名）
+                            const fileName = file.name.replace('.json', '');
+                            
+                            // 提取文件名的第一部分（以"."分隔）
+                            const srcFromValue = fileName.split('.')[0];
+                            
+                            // 为每个站点添加来源信息和删除标记，并设置默认值
+                            const sitesWithSource = json.sites.map(site => {
+                                // 保存原始数据（包含所有字段）
+                                const originalSite = { ...site };
+                                
+                                // 设置默认值：如果字段不存在或为空(null/undefined)，则设为true
+                                const processedSite = {
+                                    ...site,
+                                    searchable: site.searchable !== undefined && site.searchable !== null ? site.searchable : true,
+                                    quickSearch: site.quickSearch !== undefined && site.quickSearch !== null ? site.quickSearch : true,
+                                    changable: site.changable !== undefined && site.changable !== null ? site.changable : true,
+                                    srcFrom: srcFromValue, // 只保留文件名的第一部分
+                                    deleted: false, // 新增删除标记
+                                    originalData: originalSite // 保存原始数据
+                                };
+                                
+                                return processedSite;
+                            });
+                            
+                            allSitesData = allSitesData.concat(sitesWithSource);
+                            originalSitesData = originalSitesData.concat(sitesWithSource);
+                            processedCount++;
+                            
+                            if (processedCount === files.length) {
+                                // 计算所有额外字段
+                                calculateExtraFields();
+                                applyFilters(); // 应用筛选
+                                renderTable();
+                                table.style.display = 'table';
+                                saveBtn.style.display = 'inline-block';
+                                downloadBtn.style.display = 'inline-block';
+                                successDiv.textContent = `成功加载 ${files.length} 个文件，共 ${allSitesData.length} 条记录！`;
+                                
+                                setTimeout(() => {
+                                    successDiv.textContent = '';
+                                }, 5000);
+                            }
+                        } catch (err) {
+                            processedCount++;
+                            errorDiv.textContent = `解析文件 ${file.name} 时出错: ${err.message}`;
+                            
+                            if (processedCount === files.length) {
+                                table.style.display = 'none';
+                                saveBtn.style.display = 'none';
+                                downloadBtn.style.display = 'none';
+                            }
+                        }
+                    };
+                    reader.onerror = function() {
+                        processedCount++;
+                        errorDiv.textContent = `读取文件 ${file.name} 失败`;
+                        
+                        if (processedCount === files.length) {
+                            table.style.display = 'none';
+                            saveBtn.style.display = 'none';
+                            downloadBtn.style.display = 'none';
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            });
+            
+            showAllFieldsToggle.addEventListener('change', function() {
+                // 重新计算额外字段（因为可能需要更新显示）
+                calculateExtraFields();
+                applyFilters();
+                renderTable();
+            });
+            
+            // 添加搜索和筛选事件监听器
+            searchInput.addEventListener('input', applyFilters);
+            filterColumn.addEventListener('change', applyFilters);
+            statusFilter.addEventListener('change', applyFilters);
+            
+            function calculateExtraFields() {
+                // 定义基本字段（这些字段已经在主表中显示）
+                const basicFields = new Set(['key', 'name', 'searchable', 'quickSearch', 'changable', 'hide', 'srcFrom', 'deleted', 'originalData']);
+                
+                // 收集所有额外字段
+                const allExtraFields = new Set();
+                
+                allSitesData.forEach(site => {
+                    for (const fieldName in site.originalData) {
+                        if (!basicFields.has(fieldName.toLowerCase()) && !basicFields.has(fieldName)) {
+                            allExtraFields.add(fieldName);
+                        }
+                    }
+                });
+                
+                // 转换为排序后的数组
+                extraFieldNames = Array.from(allExtraFields).sort();
+            }
+            
+            function applyFilters() {
+                // 获取搜索关键词
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                const selectedColumn = filterColumn.value;
+                const selectedStatus = statusFilter.value;
+                
+                // 过滤数据
+                filteredSitesData = allSitesData.filter(site => {
+                    // 状态筛选
+                    if (selectedStatus === 'active' && site.deleted) return false;
+                    if (selectedStatus === 'deleted' && !site.deleted) return false;
+                    
+                    // 搜索筛选
+                    if (searchTerm) {
+                        if (selectedColumn) {
+                            // 特定列搜索
+                            const cellValue = String(site[selectedColumn] || '');
+                            if (!cellValue.toLowerCase().includes(searchTerm)) {
+                                return false;
+                            }
+                        } else {
+                            // 全局搜索
+                            let found = false;
+                            
+                            // 检查基本字段
+                            for (const key in site) {
+                                if (key !== 'originalData' && key !== 'deleted') {
+                                    const cellValue = String(site[key] || '');
+                                    if (cellValue.toLowerCase().includes(searchTerm)) {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // 如果基本字段没找到，检查额外字段
+                            if (!found && showAllFieldsToggle.checked) {
+                                for (const fieldName of extraFieldNames) {
+                                    const fieldValue = site.originalData[fieldName];
+                                    if (fieldValue !== undefined && fieldValue !== null) {
+                                        const cellValue = typeof fieldValue === 'object' 
+                                            ? JSON.stringify(fieldValue) 
+                                            : String(fieldValue);
+                                        if (cellValue.toLowerCase().includes(searchTerm)) {
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (!found) return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+                
+                // 更新统计信息
+                updateStats();
+                
+                // 重新渲染表格
+                renderTable();
+            }
+            
+            function updateStats() {
+                statsDiv.textContent = `显示 ${filteredSitesData.length} / ${allSitesData.length} 条记录`;
+            }
+            
+            function renderTable() {
+                // 清空表头和表体
+                headerRow.innerHTML = '';
+                tbody.innerHTML = '';
+                
+                // 添加拖拽手柄列
+                const dragHandleHeader = document.createElement('th');
+                dragHandleHeader.innerHTML = '';
+                headerRow.appendChild(dragHandleHeader);
+                
+                // 添加索引列
+                const indexHeader = document.createElement('th');
+                indexHeader.textContent = '#';
+                headerRow.appendChild(indexHeader);
+                
+                // 添加固定字段列 - 按照新顺序排列
+                const fixedHeaders = [
+                    {name: 'Key', className: ''},
+                    {name: 'Name', className: ''},
+                    {name: '删除', className: 'delete-cell'},
+                    {name: 'Searchable', className: ''},
+                    {name: 'Quick Search', className: ''},
+                    {name: 'Changable', className: ''},
+                    {name: 'Hide', className: ''},
+                    {name: 'Src From', className: 'src-from-cell'},
+                    {name: '移动操作', className: ''}
+                ];
+                
+                fixedHeaders.forEach(headerInfo => {
+                    const th = document.createElement('th');
+                    th.textContent = headerInfo.name;
+                    if (headerInfo.className) {
+                        th.className = headerInfo.className;
+                    }
+                    headerRow.appendChild(th);
+                });
+                
+                // 如果显示全部字段，则添加额外列
+                if (showAllFieldsToggle.checked) {
+                    extraFieldNames.forEach(fieldName => {
+                        const th = document.createElement('th');
+                        th.textContent = fieldName;
+                        th.style.minWidth = '120px';
+                        headerRow.appendChild(th);
+                    });
+                }
+                
+                // 渲染筛选后的数据
+                filteredSitesData.forEach((site, originalIndex) => {
+                    // 找到原始索引
+                    const originalIndexInAll = allSitesData.findIndex(s => s === site);
+                    const row = document.createElement('tr');
+                    row.dataset.index = originalIndexInAll;
+                    row.draggable = true;
+                    row.classList.add('draggable-row');
+                    
+                    // 如果已标记删除，则添加特殊样式
+                    if (site.deleted) {
+                        row.classList.add('deleted-row');
+                    }
+                    
+                    // 拖拽手柄列
+                    const dragHandleCell = document.createElement('td');
+                    dragHandleCell.className = 'drag-handle-cell';
+                    dragHandleCell.innerHTML = '☰';
+                    dragHandleCell.classList.add('drag-handle');
+                    row.appendChild(dragHandleCell);
+                    
+                    // 索引（显示在筛选结果中的序号）
+                    const indexCell = document.createElement('td');
+                    const filteredIndex = filteredSitesData.indexOf(site) + 1;
+                    indexCell.textContent = filteredIndex;
+                    indexCell.className = 'index-cell';
+                    row.appendChild(indexCell);
+                    
+                    // Key
+                    const keyCell = document.createElement('td');
+                    keyCell.textContent = site.key || '';
+                    row.appendChild(keyCell);
+                    
+                    // Name
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = site.name || '';
+                    row.appendChild(nameCell);
+                    
+                    // 删除开关
+                    const deleteCell = document.createElement('td');
+                    deleteCell.className = 'delete-cell';
+                    const deleteSwitch = createDeleteSwitch(site.deleted, originalIndexInAll);
+                    deleteCell.appendChild(deleteSwitch);
+                    row.appendChild(deleteCell);
+                    
+                    // Searchable
+                    const searchableCell = document.createElement('td');
+                    const searchableSwitch = createSwitch(site.searchable, originalIndexInAll, 'searchable');
+                    searchableCell.appendChild(searchableSwitch);
+                    row.appendChild(searchableCell);
+                    
+                    // Quick Search
+                    const quickSearchCell = document.createElement('td');
+                    const quickSearchSwitch = createSwitch(site.quickSearch, originalIndexInAll, 'quickSearch');
+                    quickSearchCell.appendChild(quickSearchSwitch);
+                    row.appendChild(quickSearchCell);
+                    
+                    // Changable
+                    const changableCell = document.createElement('td');
+                    const changableSwitch = createSwitch(site.changable, originalIndexInAll, 'changable');
+                    changableCell.appendChild(changableSwitch);
+                    row.appendChild(changableCell);
+                    
+                    // Hide
+                    const hideCell = document.createElement('td');
+                    const hideSwitch = createSwitch(site.hide, originalIndexInAll, 'hide');
+                    hideCell.appendChild(hideSwitch);
+                    row.appendChild(hideCell);
+                    
+                    // Src From
+                    const srcFromCell = document.createElement('td');
+                    srcFromCell.textContent = site.srcFrom || '';
+                    srcFromCell.className = 'src-from-cell';
+                    row.appendChild(srcFromCell);
+                    
+                    // 移动操作列
+                    const actionCell = document.createElement('td');
+                    
+                    // 创建带工具提示的移动按钮
+                    const moveUpBtn = createActionButtonWithTooltip('↑', 'move-up', '上移一行', () => moveItem(originalIndexInAll, 'up'));
+                    const moveDownBtn = createActionButtonWithTooltip('↓', 'move-down', '下移一行', () => moveItem(originalIndexInAll, 'down'));
+                    const moveTopBtn = createActionButtonWithTooltip('⤒', 'move-top', '移到顶部', () => moveItem(originalIndexInAll, 'top'));
+                    const moveBottomBtn = createActionButtonWithTooltip('⤓', 'move-bottom', '移到底部', () => moveItem(originalIndexInAll, 'bottom'));
+                    
+                    actionCell.appendChild(moveUpBtn);
+                    actionCell.appendChild(moveDownBtn);
+                    actionCell.appendChild(moveTopBtn);
+                    actionCell.appendChild(moveBottomBtn);
+                    row.appendChild(actionCell);
+                    
+                    // 如果显示全部字段，则添加额外列
+                    if (showAllFieldsToggle.checked) {
+                        extraFieldNames.forEach(fieldName => {
+                            const extraCell = document.createElement('td');
+                            extraCell.className = 'extra-field-cell';
+                            
+                            // 获取对应字段的值
+                            const fieldValue = site.originalData[fieldName];
+                            if (fieldValue !== undefined && fieldValue !== null) {
+                                extraCell.textContent = typeof fieldValue === 'object' 
+                                    ? JSON.stringify(fieldValue) 
+                                    : String(fieldValue);
+                            } else {
+                                extraCell.textContent = '-';
+                            }
+                            
+                            row.appendChild(extraCell);
+                        });
+                    }
+                    
+                    // 添加拖拽事件监听器
+                    row.addEventListener('dragstart', handleDragStart);
+                    row.addEventListener('dragover', handleDragOver);
+                    row.addEventListener('dragenter', handleDragEnter);
+                    row.addEventListener('dragleave', handleDragLeave);
+                    row.addEventListener('drop', handleDrop);
+                    row.addEventListener('dragend', handleDragEnd);
+                    
+                    tbody.appendChild(row);
+                });
+            }
+            
+            let draggedRow = null;
+            
+            function handleDragStart(e) {
+                draggedRow = this;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.outerHTML);
+                this.classList.add('dragging');
+            }
+            
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            }
+            
+            function handleDragEnter(e) {
+                this.classList.add('drag-over');
+            }
+            
+            function handleDragLeave(e) {
+                this.classList.remove('drag-over');
+            }
+            
+            function handleDrop(e) {
+                e.stopPropagation();
+                
+                if (draggedRow !== this) {
+                    // 获取原始索引
+                    const oldIndex = parseInt(draggedRow.dataset.index);
+                    const newIndex = parseInt(this.dataset.index);
+                    
+                    // 交换数组中的元素
+                    const movedItem = allSitesData[oldIndex];
+                    allSitesData.splice(oldIndex, 1);
+                    allSitesData.splice(newIndex, 0, movedItem);
+                    
+                    // 重新计算额外字段（以防数据结构发生变化）
+                    calculateExtraFields();
+                    
+                    // 重新应用筛选
+                    applyFilters();
+                }
+                
+                this.classList.remove('drag-over');
+                return false;
+            }
+            
+            function handleDragEnd(e) {
+                document.querySelectorAll('tr.drag-over').forEach(row => {
+                    row.classList.remove('drag-over');
+                });
+                if (draggedRow) {
+                    draggedRow.classList.remove('dragging');
+                    draggedRow = null;
+                }
+            }
+            
+            function createSwitch(value, index, field) {
+                const switchContainer = document.createElement('label');
+                switchContainer.className = 'switch';
+                
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = Boolean(value);
+                input.dataset.index = index;
+                input.dataset.field = field;
+                input.addEventListener('change', function() {
+                    const idx = parseInt(this.dataset.index);
+                    const field = this.dataset.field;
+                    allSitesData[idx][field] = this.checked;
+                    
+                    // 重新应用筛选以更新显示
+                    applyFilters();
+                });
+                
+                const span = document.createElement('span');
+                span.className = 'slider';
+                
+                switchContainer.appendChild(input);
+                switchContainer.appendChild(span);
+                
+                return switchContainer;
+            }
+            
+            function createDeleteSwitch(value, index) {
+                const switchContainer = document.createElement('label');
+                switchContainer.className = 'switch delete-switch';
+                
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = Boolean(value);
+                input.dataset.index = index;
+                input.dataset.field = 'deleted';
+                input.addEventListener('change', function() {
+                    const idx = parseInt(this.dataset.index);
+                    allSitesData[idx].deleted = this.checked;
+                    
+                    // 重新应用筛选以更新显示
+                    applyFilters();
+                });
+                
+                const span = document.createElement('span');
+                span.className = 'slider';
+                
+                switchContainer.appendChild(input);
+                switchContainer.appendChild(span);
+                
+                return switchContainer;
+            }
+            
+            function createActionButtonWithTooltip(label, className, tooltipText, onClick) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = label;
+                btn.className = `action-btn ${className}`;
+                
+                // 创建工具提示元素
+                const tooltip = document.createElement('span');
+                tooltip.className = 'tooltip';
+                tooltip.textContent = tooltipText;
+                
+                btn.appendChild(tooltip);
+                
+                btn.addEventListener('click', onClick);
+                
+                return btn;
+            }
+            
+            function moveItem(index, direction) {
+                if (direction === 'up' && index > 0) {
+                    // 向上移动
+                    [allSitesData[index], allSitesData[index - 1]] = [allSitesData[index - 1], allSitesData[index]];
+                } else if (direction === 'down' && index < allSitesData.length - 1) {
+                    // 向下移动
+                    [allSitesData[index], allSitesData[index + 1]] = [allSitesData[index + 1], allSitesData[index]];
+                } else if (direction === 'top' && index > 0) {
+                    // 移到顶部
+                    const item = allSitesData.splice(index, 1)[0];
+                    allSitesData.unshift(item);
+                } else if (direction === 'bottom' && index < allSitesData.length - 1) {
+                    // 移到底部
+                    const item = allSitesData.splice(index, 1)[0];
+                    allSitesData.push(item);
+                }
+                
+                // 重新计算额外字段（以防数据结构发生变化）
+                calculateExtraFields();
+                
+                // 重新应用筛选
+                applyFilters();
+            }
+            
+            // 辅助函数：检查值是否为空
+            function isEmpty(value) {
+                if (value === null || value === undefined) return true;
+                if (typeof value === 'string') return value.trim() === '';
+                if (Array.isArray(value)) return value.length === 0;
+                if (typeof value === 'object') return Object.keys(value).length === 0;
+                return false;
+            }
+            
+            // 辅助函数：过滤对象中的空字段
+            function filterEmptyFields(obj) {
+                const result = {};
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key) && !isEmpty(obj[key])) {
+                        // 如果是对象类型，递归过滤
+                        if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                            result[key] = filterEmptyFields(obj[key]);
+                        } else {
+                            result[key] = obj[key];
+                        }
+                    }
+                }
+                return result;
+            }
+            
+            // 辅助函数：从原始数据中移除编辑器专用字段
+            function removeEditorFields(obj) {
+                const result = {};
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        // 跳过编辑器专用字段
+                        if (key !== 'deleted' && key !== 'originalData') {
+                            // 如果是对象类型，递归处理
+                            if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                                result[key] = removeEditorFields(obj[key]);
+                            } else {
+                                result[key] = obj[key];
+                            }
+                        }
+                    }
+                }
+                return result;
+            }
+            
+            saveBtn.addEventListener('click', function() {
+                if (allSitesData.length === 0) {
+                    errorDiv.textContent = '没有数据可保存';
+                    return;
+                }
+                
+                try {
+                    // 过滤掉已删除的项
+                    const filteredData = allSitesData.filter(item => !item.deleted);
+                    // 保存原始数据（包含所有字段），并过滤空字段和编辑器专用字段
+                    const sitesToSave = filteredData.map(item => {
+                        const cleanData = removeEditorFields(item.originalData);
+                        return filterEmptyFields(cleanData);
+                    });
+                    const mergedData = { sites: sitesToSave };
+                    localStorage.setItem('modifiedJson', JSON.stringify(mergedData, null, 2));
+                    successDiv.textContent = `修改已保存到本地存储 (保留 ${filteredData.length} 条记录，已过滤空字段和编辑器专用字段)`;
+                    
+                    setTimeout(() => {
+                        successDiv.textContent = '';
+                    }, 5000);
+                } catch (err) {
+                    errorDiv.textContent = '保存失败: ' + err.message;
+                }
+            });
+            
+            downloadBtn.addEventListener('click', function() {
+                if (allSitesData.length === 0) {
+                    errorDiv.textContent = '没有数据可下载';
+                    return;
+                }
+                
+                try {
+                    // 过滤掉已删除的项
+                    const filteredData = allSitesData.filter(item => !item.deleted);
+                    // 保存原始数据（包含所有字段），并过滤空字段和编辑器专用字段
+                    const sitesToDownload = filteredData.map(item => {
+                        const cleanData = removeEditorFields(item.originalData);
+                        return filterEmptyFields(cleanData);
+                    });
+                    const downloadData = { sites: sitesToDownload };
+                    const dataStr = JSON.stringify(downloadData, null, 2);
+                    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                    
+                    const exportFileDefaultName = 'merged_sites.json';
+                    
+                    const linkElement = document.createElement('a');
+                    linkElement.setAttribute('href', dataUri);
+                    linkElement.setAttribute('download', exportFileDefaultName);
+                    linkElement.click();
+                    
+                    successDiv.textContent = `文件下载完成 (包含 ${filteredData.length} 条记录，已过滤空字段和编辑器专用字段)`;
+                    setTimeout(() => {
+                        successDiv.textContent = '';
+                    }, 5000);
+                } catch (err) {
+                    errorDiv.textContent = '下载失败: ' + err.message;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
