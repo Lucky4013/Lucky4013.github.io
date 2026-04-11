@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>增强版JSON Sites Comparator</title>
+    <title>高级JSON Sites Comparator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -122,9 +122,12 @@
             margin-top: 20px;
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
         .control-group {
             flex: 1;
+            min-width: 250px;
+            margin-bottom: 10px;
         }
         .control-group label {
             display: block;
@@ -152,11 +155,34 @@
             font-family: monospace;
             resize: vertical;
         }
+        .section-header {
+            background-color: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .toggle-all-controls {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f1f8e9;
+            border-radius: 4px;
+        }
+        .toggle-control {
+            flex: 1;
+            min-width: 200px;
+        }
+        .toggle-control label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>增强版JSON Sites Comparator</h1>
+        <h1>高级JSON Sites Comparator</h1>
         
         <div class="file-inputs">
             <div class="file-input-group">
@@ -175,6 +201,41 @@
         
         <div class="results">
             <div id="stats" class="stats hidden"></div>
+            
+            <!-- 总体控制选项 -->
+            <div class="section-header">
+                <h3>合并控制选项</h3>
+            </div>
+            
+            <div class="toggle-all-controls">
+                <div class="toggle-control">
+                    <label for="matchControl">相同项处理方式:</label>
+                    <select id="matchControl">
+                        <option value="custom">逐项自定义选择</option>
+                        <option value="file1">全部使用文件1</option>
+                        <option value="file2">全部使用文件2</option>
+                    </select>
+                </div>
+                
+                <div class="toggle-control">
+                    <label for="unmatched1Control">文件1独有项处理方式:</label>
+                    <select id="unmatched1Control">
+                        <option value="include">全部保留</option>
+                        <option value="exclude">全部排除</option>
+                        <option value="custom">逐项自定义选择</option>
+                    </select>
+                </div>
+                
+                <div class="toggle-control">
+                    <label for="unmatched2Control">文件2独有项处理方式:</label>
+                    <select id="unmatched2Control">
+                        <option value="include">全部保留</option>
+                        <option value="exclude">全部排除</option>
+                        <option value="custom">逐项自定义选择</option>
+                    </select>
+                </div>
+            </div>
+            
             <table id="resultsTable" class="hidden">
                 <thead>
                     <tr>
@@ -194,14 +255,6 @@
                 <div class="control-group">
                     <label for="outputFileName">输出文件名:</label>
                     <input type="text" id="outputFileName" value="merged_sites.json">
-                </div>
-                <div class="control-group">
-                    <label for="mergeOption">合并选项:</label>
-                    <select id="mergeOption">
-                        <option value="all">合并所有项（包括匹配和不匹配）</option>
-                        <option value="matches_only">仅合并匹配项</option>
-                        <option value="custom">自定义选择</option>
-                    </select>
                 </div>
                 <button id="mergeBtn" class="merge-btn">执行合并</button>
             </div>
@@ -269,7 +322,8 @@
                                 site2: site2,
                                 index1: index1,
                                 index2: j,
-                                useFrom: 'file1' // 默认使用文件1的数据
+                                useFrom: 'file1', // 默认使用文件1的数据
+                                include: true // 默认包含在合并结果中
                             });
                             
                             // 从unmatchedInFile2中移除已匹配的项
@@ -291,13 +345,14 @@
                         currentUnmatched1.push({
                             site: site1,
                             index1: index1,
-                            source: 'file1'
+                            source: 'file1',
+                            include: true // 默认包含在合并结果中
                         });
                     }
                 });
                 
                 // 显示结果
-                displayResults(currentMatches, currentUnmatched1, currentUnmatched2, sites1, sites2);
+                displayResults();
             } catch (error) {
                 console.error('处理文件时出错:', error);
                 alert('处理文件时出错: ' + error.message);
@@ -324,7 +379,7 @@
             });
         }
         
-        function displayResults(matches, unmatchedInFile1, unmatchedInFile2, allSites1, allSites2) {
+        function displayResults() {
             const tbody = document.getElementById('resultsBody');
             const statsDiv = document.getElementById('stats');
             const resultsTable = document.getElementById('resultsTable');
@@ -334,21 +389,26 @@
             tbody.innerHTML = '';
             
             // 添加匹配项（带合并选项）
-            matches.forEach((match, index) => {
+            currentMatches.forEach((match, index) => {
                 const row = document.createElement('tr');
-                row.classList.add('merge-row');
-                row.dataset.matchIndex = index;
+                row.classList.add('match-row');
+                row.dataset.type = 'match';
+                row.dataset.index = index;
                 row.innerHTML = `
                     <td>
                         <div class="radio-container">
                             <div class="radio-option">
-                                <input type="radio" name="merge-${index}" value="file1" checked onchange="updateMergeChoice(${index}, 'file1')">
+                                <input type="radio" name="merge-${index}" value="file1" ${match.useFrom === 'file1' ? 'checked' : ''} onchange="updateMatchChoice(${index}, 'file1')">
                                 <span>使用文件1</span>
                             </div>
                             <div class="radio-option">
-                                <input type="radio" name="merge-${index}" value="file2" onchange="updateMergeChoice(${index}, 'file2')">
+                                <input type="radio" name="merge-${index}" value="file2" ${match.useFrom === 'file2' ? 'checked' : ''} onchange="updateMatchChoice(${index}, 'file2')">
                                 <span>使用文件2</span>
                             </div>
+                        </div>
+                        <div style="margin-top: 5px;">
+                            <input type="checkbox" id="include-match-${index}" ${match.include ? 'checked' : ''} onchange="updateIncludeStatus('match', ${index}, this.checked)">
+                            <label for="include-match-${index}">包含此项</label>
                         </div>
                     </td>
                     <td>匹配</td>
@@ -362,11 +422,18 @@
             });
             
             // 添加文件1中未匹配的项
-            unmatchedInFile1.forEach((unmatched, index) => {
+            currentUnmatched1.forEach((unmatched, index) => {
                 const row = document.createElement('tr');
                 row.classList.add('no-match-row');
+                row.dataset.type = 'unmatched1';
+                row.dataset.index = index;
                 row.innerHTML = `
-                    <td>自动保留</td>
+                    <td>
+                        <div>
+                            <input type="checkbox" id="include-unmatched1-${index}" ${unmatched.include ? 'checked' : ''} onchange="updateIncludeStatus('unmatched1', ${index}, this.checked)">
+                            <label for="include-unmatched1-${index}">包含此项</label>
+                        </div>
+                    </td>
                     <td>文件1独有</td>
                     <td>${unmatched.site.src_from}</td>
                     <td>${unmatched.site.key}</td>
@@ -378,11 +445,18 @@
             });
             
             // 添加文件2中未匹配的项
-            unmatchedInFile2.forEach((unmatched, index) => {
+            currentUnmatched2.forEach((unmatched, index) => {
                 const row = document.createElement('tr');
                 row.classList.add('no-match-row');
+                row.dataset.type = 'unmatched2';
+                row.dataset.index = index;
                 row.innerHTML = `
-                    <td>自动保留</td>
+                    <td>
+                        <div>
+                            <input type="checkbox" id="include-unmatched2-${index}" onchange="updateIncludeStatus('unmatched2', ${index}, this.checked)">
+                            <label for="include-unmatched2-${index}">包含此项</label>
+                        </div>
+                    </td>
                     <td>文件2独有</td>
                     <td>${unmatched.src_from}</td>
                     <td>${unmatched.key}</td>
@@ -396,28 +470,101 @@
             // 显示统计信息
             statsDiv.innerHTML = `
                 <h3>比较结果统计</h3>
-                <p><strong>匹配项数量:</strong> ${matches.length} (可选择合并来源)</p>
-                <p><strong>仅在文件1中存在的项:</strong> ${unmatchedInFile1.length}</p>
-                <p><strong>仅在文件2中存在的项:</strong> ${unmatchedInFile2.length}</p>
-                <p><strong>文件1总项数:</strong> ${allSites1.length}</p>
-                <p><strong>文件2总项数:</strong> ${allSites2.length}</p>
+                <p><strong>匹配项数量:</strong> ${currentMatches.length} (可选择合并来源)</p>
+                <p><strong>仅在文件1中存在的项:</strong> ${currentUnmatched1.length}</p>
+                <p><strong>仅在文件2中存在的项:</strong> ${currentUnmatched2.length}</p>
+                <p><strong>文件1总项数:</strong> ${(parsedData1.sites || []).length}</p>
+                <p><strong>文件2总项数:</strong> ${(parsedData2.sites || []).length}</p>
             `;
             
             // 显示结果区域和控制面板
             statsDiv.classList.remove('hidden');
             resultsTable.classList.remove('hidden');
             controlsSection.classList.remove('hidden');
+            
+            // 更新控制选项
+            updateControls();
         }
         
-        function updateMergeChoice(index, choice) {
+        function updateMatchChoice(index, choice) {
             if (currentMatches[index]) {
                 currentMatches[index].useFrom = choice;
             }
         }
         
-        document.getElementById('mergeBtn').addEventListener('click', function() {
-            const mergeOption = document.getElementById('mergeOption').value;
+        function updateIncludeStatus(type, index, include) {
+            if (type === 'match' && currentMatches[index]) {
+                currentMatches[index].include = include;
+            } else if (type === 'unmatched1' && currentUnmatched1[index]) {
+                currentUnmatched1[index].include = include;
+            } else if (type === 'unmatched2' && currentUnmatched2[index]) {
+                currentUnmatched2[index].include = include;
+            }
+        }
+        
+        function updateControls() {
+            // 监听控制选项变化
+            document.getElementById('matchControl').onchange = function() {
+                const value = this.value;
+                if (value === 'file1') {
+                    currentMatches.forEach(match => {
+                        match.useFrom = 'file1';
+                        match.include = true;
+                    });
+                    // 更新界面显示
+                    currentMatches.forEach((match, index) => {
+                        document.querySelector(`input[name="merge-${index}"][value="file1"]`).checked = true;
+                        document.getElementById(`include-match-${index}`).checked = true;
+                    });
+                } else if (value === 'file2') {
+                    currentMatches.forEach(match => {
+                        match.useFrom = 'file2';
+                        match.include = true;
+                    });
+                    // 更新界面显示
+                    currentMatches.forEach((match, index) => {
+                        document.querySelector(`input[name="merge-${index}"][value="file2"]`).checked = true;
+                        document.getElementById(`include-match-${index}`).checked = true;
+                    });
+                }
+            };
             
+            document.getElementById('unmatched1Control').onchange = function() {
+                const value = this.value;
+                if (value === 'include') {
+                    currentUnmatched1.forEach(item => item.include = true);
+                    // 更新界面显示
+                    currentUnmatched1.forEach((item, index) => {
+                        document.getElementById(`include-unmatched1-${index}`).checked = true;
+                    });
+                } else if (value === 'exclude') {
+                    currentUnmatched1.forEach(item => item.include = false);
+                    // 更新界面显示
+                    currentUnmatched1.forEach((item, index) => {
+                        document.getElementById(`include-unmatched1-${index}`).checked = false;
+                    });
+                }
+            };
+            
+            document.getElementById('unmatched2Control').onchange = function() {
+                const value = this.value;
+                if (value === 'include') {
+                    currentUnmatched2.forEach(item => item.include = true);
+                    // 更新界面显示
+                    currentUnmatched2.forEach((item, index) => {
+                        document.getElementById(`include-unmatched2-${index}`).checked = true;
+                    });
+                } else if (value === 'exclude') {
+                    currentUnmatched2.forEach(item => item.include = false);
+                    // 更新界面显示
+                    currentUnmatched2.forEach((item, index) => {
+                        document.getElementById(`include-unmatched2-${index}`).checked = false;
+                    });
+                }
+            };
+        }
+        
+        document.getElementById('mergeBtn').addEventListener('click', function() {
             if (!parsedData1 || !parsedData2) {
                 alert('请先比较两个文件！');
                 return;
@@ -425,59 +572,30 @@
             
             let mergedSites = [];
             
-            switch(mergeOption) {
-                case 'all':
-                    // 合并所有项：匹配项按选择，非匹配项全部保留
-                    // 添加匹配项（按选择）
-                    currentMatches.forEach(match => {
-                        if (match.useFrom === 'file1') {
-                            mergedSites.push({...match.site1});
-                        } else {
-                            mergedSites.push({...match.site2});
-                        }
-                    });
-                    
-                    // 添加文件1独有的项
-                    currentUnmatched1.forEach(item => {
-                        mergedSites.push({...item.site});
-                    });
-                    
-                    // 添加文件2独有的项
-                    currentUnmatched2.forEach(item => {
-                        mergedSites.push({...item});
-                    });
-                    break;
-                    
-                case 'matches_only':
-                    // 仅合并匹配项
-                    currentMatches.forEach(match => {
-                        if (match.useFrom === 'file1') {
-                            mergedSites.push({...match.site1});
-                        } else {
-                            mergedSites.push({...match.site2});
-                        }
-                    });
-                    break;
-                    
-                case 'custom':
-                    // 自定义选择（目前与全部合并相同，可根据需要扩展）
-                    currentMatches.forEach(match => {
-                        if (match.useFrom === 'file1') {
-                            mergedSites.push({...match.site1});
-                        } else {
-                            mergedSites.push({...match.site2});
-                        }
-                    });
-                    
-                    currentUnmatched1.forEach(item => {
-                        mergedSites.push({...item.site});
-                    });
-                    
-                    currentUnmatched2.forEach(item => {
-                        mergedSites.push({...item});
-                    });
-                    break;
-            }
+            // 添加匹配项（如果包含的话）
+            currentMatches.forEach(match => {
+                if (match.include) {
+                    if (match.useFrom === 'file1') {
+                        mergedSites.push({...match.site1});
+                    } else {
+                        mergedSites.push({...match.site2});
+                    }
+                }
+            });
+            
+            // 添加文件1独有的项（如果包含的话）
+            currentUnmatched1.forEach(item => {
+                if (item.include) {
+                    mergedSites.push({...item.site});
+                }
+            });
+            
+            // 添加文件2独有的项（如果包含的话）
+            currentUnmatched2.forEach(item => {
+                if (item.include) {
+                    mergedSites.push({...item});
+                }
+            });
             
             // 创建合并后的数据对象（保留原始JSON的其他字段）
             const mergedData = {...parsedData1}; // 从第一个文件复制所有字段
