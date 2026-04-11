@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强版JSON Sites Comparator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .file-inputs {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+        .file-input-group {
+            flex: 1;
+            text-align: center;
+        }
+        .file-input-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .merge-btn {
+            background-color: #2196F3;
+            margin-top: 20px;
+        }
+        .merge-btn:hover {
+            background-color: #0b7dda;
+        }
+        .export-btn {
+            background-color: #FF9800;
+        }
+        .export-btn:hover {
+            background-color: #e68a00;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .match-row {
+            background-color: #e8f5e8;
+        }
+        .no-match-row {
+            background-color: #ffecec;
+        }
+        .merge-row {
+            background-color: #fff3cd;
+        }
+        .stats {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f0f8ff;
+            border-radius: 4px;
+        }
+        .hidden {
+            display: none;
+        }
+        .radio-container {
+            display: flex;
+            gap: 15px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .control-group {
+            flex: 1;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .export-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>增强版JSON Sites Comparator</h1>
+        
+        <div class="file-inputs">
+            <div class="file-input-group">
+                <label for="file1">选择第一个JSON文件:</label>
+                <input type="file" id="file1" accept=".json">
+            </div>
+            <div class="file-input-group">
+                <label for="file2">选择第二个JSON文件:</label>
+                <input type="file" id="file2" accept=".json">
+            </div>
+        </div>
+        
+        <button id="compareBtn">比较Sites数据</button>
+        
+        <div id="loading" class="hidden">正在处理文件...</div>
+        
+        <div class="results">
+            <div id="stats" class="stats hidden"></div>
+            <table id="resultsTable" class="hidden">
+                <thead>
+                    <tr>
+                        <th>操作</th>
+                        <th>匹配状态</th>
+                        <th>Src From</th>
+                        <th>Key</th>
+                        <th>API</th>
+                        <th>文件1索引</th>
+                        <th>文件2索引</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+            </table>
+            
+            <div class="controls hidden" id="controlsSection">
+                <div class="control-group">
+                    <label for="outputFileName">输出文件名:</label>
+                    <input type="text" id="outputFileName" value="merged_sites.json">
+                </div>
+                <div class="control-group">
+                    <label for="mergeOption">合并选项:</label>
+                    <select id="mergeOption">
+                        <option value="all">合并所有项（包括匹配和不匹配）</option>
+                        <option value="matches_only">仅合并匹配项</option>
+                        <option value="custom">自定义选择</option>
+                    </select>
+                </div>
+                <button id="mergeBtn" class="merge-btn">执行合并</button>
+            </div>
+            
+            <div class="export-section hidden" id="exportSection">
+                <h3>合并结果</h3>
+                <textarea id="exportResult" readonly></textarea>
+                <button id="exportBtn" class="export-btn">下载合并后的JSON文件</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let parsedData1 = null;
+        let parsedData2 = null;
+        let currentMatches = [];
+        let currentUnmatched1 = [];
+        let currentUnmatched2 = [];
+
+        document.getElementById('compareBtn').addEventListener('click', async function() {
+            const file1Input = document.getElementById('file1');
+            const file2Input = document.getElementById('file2');
+            
+            if (!file1Input.files.length || !file2Input.files.length) {
+                alert('请选择两个JSON文件！');
+                return;
+            }
+            
+            // 显示加载状态
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('resultsTable').classList.add('hidden');
+            document.getElementById('stats').classList.add('hidden');
+            document.getElementById('controlsSection').classList.add('hidden');
+            document.getElementById('exportSection').classList.add('hidden');
+            
+            try {
+                // 读取并解析文件
+                parsedData1 = await readFileAsJSON(file1Input.files[0]);
+                parsedData2 = await readFileAsJSON(file2Input.files[0]);
+                
+                // 获取sites数组
+                const sites1 = parsedData1.sites || [];
+                const sites2 = parsedData2.sites || [];
+                
+                // 比较函数
+                function compareSites(site1, site2) {
+                    return site1.src_from === site2.src_from && 
+                           site1.key === site2.key && 
+                           site1.api === site2.api;
+                }
+                
+                // 找出匹配的项目
+                currentMatches = [];
+                currentUnmatched1 = [];
+                currentUnmatched2 = [...sites2]; // 复制文件2的sites用于标记未匹配项
+                
+                // 遍历文件1的sites
+                sites1.forEach((site1, index1) => {
+                    let matched = false;
+                    for (let j = 0; j < sites2.length; j++) {
+                        const site2 = sites2[j];
+                        if (compareSites(site1, site2)) {
+                            currentMatches.push({
+                                site1: site1,
+                                site2: site2,
+                                index1: index1,
+                                index2: j,
+                                useFrom: 'file1' // 默认使用文件1的数据
+                            });
+                            
+                            // 从unmatchedInFile2中移除已匹配的项
+                            const foundIndex = currentUnmatched2.findIndex(s => 
+                                s.src_from === site2.src_from && 
+                                s.key === site2.key && 
+                                s.api === site2.api
+                            );
+                            if (foundIndex !== -1) {
+                                currentUnmatched2.splice(foundIndex, 1);
+                            }
+                            
+                            matched = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!matched) {
+                        currentUnmatched1.push({
+                            site: site1,
+                            index1: index1,
+                            source: 'file1'
+                        });
+                    }
+                });
+                
+                // 显示结果
+                displayResults(currentMatches, currentUnmatched1, currentUnmatched2, sites1, sites2);
+            } catch (error) {
+                console.error('处理文件时出错:', error);
+                alert('处理文件时出错: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        });
+        
+        function readFileAsJSON(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        resolve(data);
+                    } catch (error) {
+                        reject(new Error('JSON文件格式错误'));
+                    }
+                };
+                reader.onerror = function() {
+                    reject(new Error('读取文件失败'));
+                };
+                reader.readAsText(file);
+            });
+        }
+        
+        function displayResults(matches, unmatchedInFile1, unmatchedInFile2, allSites1, allSites2) {
+            const tbody = document.getElementById('resultsBody');
+            const statsDiv = document.getElementById('stats');
+            const resultsTable = document.getElementById('resultsTable');
+            const controlsSection = document.getElementById('controlsSection');
+            
+            // 清空表格
+            tbody.innerHTML = '';
+            
+            // 添加匹配项（带合并选项）
+            matches.forEach((match, index) => {
+                const row = document.createElement('tr');
+                row.classList.add('merge-row');
+                row.dataset.matchIndex = index;
+                row.innerHTML = `
+                    <td>
+                        <div class="radio-container">
+                            <div class="radio-option">
+                                <input type="radio" name="merge-${index}" value="file1" checked onchange="updateMergeChoice(${index}, 'file1')">
+                                <span>使用文件1</span>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="merge-${index}" value="file2" onchange="updateMergeChoice(${index}, 'file2')">
+                                <span>使用文件2</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>匹配</td>
+                    <td>${match.site1.src_from}</td>
+                    <td>${match.site1.key}</td>
+                    <td>${match.site1.api}</td>
+                    <td>${match.index1}</td>
+                    <td>${match.index2}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 添加文件1中未匹配的项
+            unmatchedInFile1.forEach((unmatched, index) => {
+                const row = document.createElement('tr');
+                row.classList.add('no-match-row');
+                row.innerHTML = `
+                    <td>自动保留</td>
+                    <td>文件1独有</td>
+                    <td>${unmatched.site.src_from}</td>
+                    <td>${unmatched.site.key}</td>
+                    <td>${unmatched.site.api}</td>
+                    <td>${unmatched.index1}</td>
+                    <td>-</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 添加文件2中未匹配的项
+            unmatchedInFile2.forEach((unmatched, index) => {
+                const row = document.createElement('tr');
+                row.classList.add('no-match-row');
+                row.innerHTML = `
+                    <td>自动保留</td>
+                    <td>文件2独有</td>
+                    <td>${unmatched.src_from}</td>
+                    <td>${unmatched.key}</td>
+                    <td>${unmatched.api}</td>
+                    <td>-</td>
+                    <td>?</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 显示统计信息
+            statsDiv.innerHTML = `
+                <h3>比较结果统计</h3>
+                <p><strong>匹配项数量:</strong> ${matches.length} (可选择合并来源)</p>
+                <p><strong>仅在文件1中存在的项:</strong> ${unmatchedInFile1.length}</p>
+                <p><strong>仅在文件2中存在的项:</strong> ${unmatchedInFile2.length}</p>
+                <p><strong>文件1总项数:</strong> ${allSites1.length}</p>
+                <p><strong>文件2总项数:</strong> ${allSites2.length}</p>
+            `;
+            
+            // 显示结果区域和控制面板
+            statsDiv.classList.remove('hidden');
+            resultsTable.classList.remove('hidden');
+            controlsSection.classList.remove('hidden');
+        }
+        
+        function updateMergeChoice(index, choice) {
+            if (currentMatches[index]) {
+                currentMatches[index].useFrom = choice;
+            }
+        }
+        
+        document.getElementById('mergeBtn').addEventListener('click', function() {
+            const mergeOption = document.getElementById('mergeOption').value;
+            
+            if (!parsedData1 || !parsedData2) {
+                alert('请先比较两个文件！');
+                return;
+            }
+            
+            let mergedSites = [];
+            
+            switch(mergeOption) {
+                case 'all':
+                    // 合并所有项：匹配项按选择，非匹配项全部保留
+                    // 添加匹配项（按选择）
+                    currentMatches.forEach(match => {
+                        if (match.useFrom === 'file1') {
+                            mergedSites.push({...match.site1});
+                        } else {
+                            mergedSites.push({...match.site2});
+                        }
+                    });
+                    
+                    // 添加文件1独有的项
+                    currentUnmatched1.forEach(item => {
+                        mergedSites.push({...item.site});
+                    });
+                    
+                    // 添加文件2独有的项
+                    currentUnmatched2.forEach(item => {
+                        mergedSites.push({...item});
+                    });
+                    break;
+                    
+                case 'matches_only':
+                    // 仅合并匹配项
+                    currentMatches.forEach(match => {
+                        if (match.useFrom === 'file1') {
+                            mergedSites.push({...match.site1});
+                        } else {
+                            mergedSites.push({...match.site2});
+                        }
+                    });
+                    break;
+                    
+                case 'custom':
+                    // 自定义选择（目前与全部合并相同，可根据需要扩展）
+                    currentMatches.forEach(match => {
+                        if (match.useFrom === 'file1') {
+                            mergedSites.push({...match.site1});
+                        } else {
+                            mergedSites.push({...match.site2});
+                        }
+                    });
+                    
+                    currentUnmatched1.forEach(item => {
+                        mergedSites.push({...item.site});
+                    });
+                    
+                    currentUnmatched2.forEach(item => {
+                        mergedSites.push({...item});
+                    });
+                    break;
+            }
+            
+            // 创建合并后的数据对象（保留原始JSON的其他字段）
+            const mergedData = {...parsedData1}; // 从第一个文件复制所有字段
+            mergedData.sites = mergedSites; // 替换sites字段
+            
+            // 显示合并结果
+            document.getElementById('exportResult').value = JSON.stringify(mergedData, null, 2);
+            document.getElementById('exportSection').classList.remove('hidden');
+        });
+        
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const resultText = document.getElementById('exportResult').value;
+            const fileName = document.getElementById('outputFileName').value || 'merged_sites.json';
+            
+            if (!resultText) {
+                alert('没有可导出的数据！');
+                return;
+            }
+            
+            const blob = new Blob([resultText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            
+            // 清理
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        });
+    </script>
+</body>
+</html>
